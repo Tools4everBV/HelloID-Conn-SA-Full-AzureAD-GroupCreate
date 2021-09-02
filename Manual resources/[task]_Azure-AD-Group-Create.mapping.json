@@ -1,0 +1,26 @@
+[
+    {
+        "name":  "Description",
+        "value":  "{{form.description}}"
+    },
+    {
+        "name":  "DisplayName",
+        "value":  "{{form.displayName}}"
+    },
+    {
+        "name":  "GroupType",
+        "value":  "{{form.groupType}}"
+    },
+    {
+        "name":  "MailNickname",
+        "value":  "{{form.mailNickname}}"
+    },
+    {
+        "name":  "Members",
+        "value":  "{{form.multiselectMembers.toJsonString}}"
+    },
+    {
+        "name":  "Owners",
+        "value":  "{{form.multiselectOwners.toJsonString}}"
+    }
+]

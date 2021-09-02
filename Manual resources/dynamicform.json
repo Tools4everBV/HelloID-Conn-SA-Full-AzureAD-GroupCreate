@@ -1,0 +1,203 @@
+[
+    {
+        "key":  "groupType",
+        "templateOptions":  {
+                                "label":  "Group type",
+                                "required":  true,
+                                "useObjects":  false,
+                                "useDataSource":  false,
+                                "useFilter":  false,
+                                "options":  [
+                                                "Microsoft 365 group",
+                                                "Security group"
+                                            ]
+                            },
+        "type":  "dropdown",
+        "defaultValue":  "Microsoft 365 group",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "text",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "groupName",
+        "templateOptions":  {
+                                "label":  "Group Name",
+                                "required":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "naming",
+        "templateOptions":  {
+                                "label":  "Naming",
+                                "required":  true,
+                                "grid":  {
+                                             "columns":  [
+                                                             {
+                                                                 "headerName":  "Display Name",
+                                                                 "field":  "displayName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Description",
+                                                                 "field":  "description"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Mail",
+                                                                 "field":  "mail"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Mail Nickname",
+                                                                 "field":  "mailNickname"
+                                                             }
+                                                         ],
+                                             "height":  300,
+                                             "rowSelection":  "single"
+                                         },
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_0",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+                                                                                              {
+                                                                                                  "propertyName":  "Name",
+                                                                                                  "otherFieldValue":  {
+                                                                                                                          "otherFieldKey":  "groupName"
+                                                                                                                      }
+                                                                                              }
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "useFilter":  true,
+                                "defaultSelectorProperty":  "mail",
+                                "useDefault":  true
+                            },
+        "hideExpression":  "!model[\"groupType\"]",
+        "type":  "grid",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  true
+    },
+    {
+        "key":  "displayName",
+        "templateOptions":  {
+                                "label":  "Display Name",
+                                "useDataSource":  false,
+                                "displayField":  "displayName",
+                                "required":  true,
+                                "placeholder":  "Loading...",
+                                "useDependOn":  true,
+                                "dependOn":  "naming",
+                                "dependOnProperty":  "displayName"
+                            },
+        "hideExpression":  "!model[\"naming\"]",
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "description",
+        "templateOptions":  {
+                                "label":  "Description",
+                                "useDataSource":  false,
+                                "displayField":  "description",
+                                "placeholder":  "Loading...",
+                                "useDependOn":  true,
+                                "dependOn":  "naming",
+                                "dependOnProperty":  "description"
+                            },
+        "hideExpression":  "!model[\"naming\"]",
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "mailNickname",
+        "templateOptions":  {
+                                "label":  "Mail Nickname",
+                                "useDependOn":  true,
+                                "dependOn":  "naming",
+                                "dependOnProperty":  "mailNickname",
+                                "placeholder":  "Loading...",
+                                "required":  true
+                            },
+        "hideExpression":  "!model[\"naming\"]",
+        "type":  "input",
+        "defaultValue":  "",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "multiselectOwners",
+        "templateOptions":  {
+                                "label":  "Owners",
+                                "useObjects":  false,
+                                "useFilter":  true,
+                                "options":  [
+                                                "Option 1",
+                                                "Option 2",
+                                                "Option 3"
+                                            ],
+                                "useDataSource":  true,
+                                "valueField":  "UserPrincipalName",
+                                "textField":  "UserPrincipalName",
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_1",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     }
+                            },
+        "hideExpression":  "!model[\"naming\"]",
+        "type":  "multiselect",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "text",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "multiselectMembers",
+        "templateOptions":  {
+                                "label":  "Members",
+                                "useObjects":  false,
+                                "useFilter":  true,
+                                "options":  [
+                                                "Option 1",
+                                                "Option 2",
+                                                "Option 3"
+                                            ],
+                                "useDataSource":  true,
+                                "valueField":  "UserPrincipalName",
+                                "textField":  "UserPrincipalName",
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_2",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     }
+                            },
+        "hideExpression":  "!model[\"naming\"]",
+        "type":  "multiselect",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "text",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    }
+]
