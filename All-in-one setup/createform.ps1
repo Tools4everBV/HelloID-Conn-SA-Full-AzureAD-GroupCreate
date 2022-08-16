@@ -7,7 +7,7 @@ $portalUrl = "https://CUSTOMER.helloid.com"
 $apiKey = "API_KEY"
 $apiSecret = "API_SECRET"
 $delegatedFormAccessGroupNames = @("Users") #Only unique names are supported. Groups must exist!
-$delegatedFormCategories = @("Group Management","Azure Active Directory") #Only unique names are supported. Categories will be created if not exists
+$delegatedFormCategories = @("Azure Active Directory","Group Management") #Only unique names are supported. Categories will be created if not exists
 $script:debugLogging = $false #Default value: $false. If $true, the HelloID resource GUIDs will be shown in the logging
 $script:duplicateForm = $false #Default value: $false. If $true, the HelloID resource names will be changed to import a duplicate Form
 $script:duplicateFormSuffix = "_tmp" #the suffix will be added to all HelloID resource names to generate a duplicate form with different resource names
@@ -20,25 +20,21 @@ $globalHelloIDVariables = [System.Collections.Generic.List[object]]@();
 $tmpName = @'
 AADAppId
 '@ 
-$tmpValue = @'
-83ac862d-fe99-4bdc-8d2e-87405fdb2379
-'@ 
+$tmpValue = "" 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 #Global variable #2 >> AADAppSecret
 $tmpName = @'
 AADAppSecret
 '@ 
-$tmpValue = "" 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
+$tmpValue = ""
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 #Global variable #3 >> AADtenantID
 $tmpName = @'
 AADtenantID
 '@ 
-$tmpValue = @'
-65fc161b-0c41-4cde-9908-dabf3cad26b6
-'@ 
+$tmpValue = "" 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
 
 
@@ -104,7 +100,7 @@ function Invoke-HelloIDGlobalVariable {
                 secret   = $Secret;
                 ItemType = 0;
             }    
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -150,7 +146,7 @@ function Invoke-HelloIDAutomationTask {
                 objectGuid          = $ObjectGuid;
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -205,7 +201,7 @@ function Invoke-HelloIDDatasource {
                 script             = $DatasourcePsScript;
                 input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
-            $body = ConvertTo-Json -InputObject $body
+            $body = ConvertTo-Json -InputObject $body -Depth 100
       
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -270,10 +266,11 @@ function Invoke-HelloIDDelegatedForm {
     param(
         [parameter(Mandatory)][String]$DelegatedFormName,
         [parameter(Mandatory)][String]$DynamicFormGuid,
-        [parameter()][String][AllowEmptyString()]$AccessGroups,
+        [parameter()][Array][AllowEmptyString()]$AccessGroups,
         [parameter()][String][AllowEmptyString()]$Categories,
         [parameter(Mandatory)][String]$UseFaIcon,
         [parameter()][String][AllowEmptyString()]$FaIcon,
+        [parameter()][String][AllowEmptyString()]$task,
         [parameter(Mandatory)][Ref]$returnObject
     )
     $delegatedFormCreated = $false
@@ -293,11 +290,16 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
-            }    
-            $body = ConvertTo-Json -InputObject $body
+                task            = ConvertFrom-Json -inputObject $task;
+            }
+            if(-not[String]::IsNullOrEmpty($AccessGroups)) { 
+                $body += @{
+                    accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
+                }
+            }
+            $body = ConvertTo-Json -InputObject $body -Depth 100
     
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -322,6 +324,8 @@ function Invoke-HelloIDDelegatedForm {
     $returnObject.value.guid = $delegatedFormGuid
     $returnObject.value.created = $delegatedFormCreated
 }
+
+
 <# Begin: HelloID Global Variables #>
 foreach ($item in $globalHelloIDVariables) {
 	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
@@ -477,7 +481,7 @@ Invoke-HelloIDDatasource -DatasourceName $dataSourceGuid_2_Name -DatasourceType 
 <# Begin: DataSource "Azure-AD-Group-Create-check-names " #>
 $tmpPsScript = @'
 # AzureAD Application Parameters #
-$Mailsuffix = "enyoi.local"
+$Mailsuffix = "devbreekie18.onmicrosoft.com"
 $Name = "M365-" + $datasource.Name
 $Description = "Microsoft 365 group for $($datasource.Name)"
 
@@ -608,19 +612,23 @@ Invoke-HelloIDDynamicForm -FormName $dynamicFormName -FormSchema $tmpSchema  -re
 
 <# Begin: Delegated Form Access Groups and Categories #>
 $delegatedFormAccessGroupGuids = @()
-foreach($group in $delegatedFormAccessGroupNames) {
-    try {
-        $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
-        $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-        $delegatedFormAccessGroupGuid = $response.groupGuid
-        $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
-        
-        Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
-    } catch {
-        Write-Error "HelloID (access)group '$group', message: $_"
+if(-not[String]::IsNullOrEmpty($delegatedFormAccessGroupNames)){
+    foreach($group in $delegatedFormAccessGroupNames) {
+        try {
+            $uri = ($script:PortalBaseUrl +"api/v1/groups/$group")
+            $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
+            $delegatedFormAccessGroupGuid = $response.groupGuid
+            $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
+            
+            Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
+        } catch {
+            Write-Error "HelloID (access)group '$group', message: $_"
+        }
+    }
+    if($null -ne $delegatedFormAccessGroupGuids){
+        $delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Depth 100 -Compress)
     }
 }
-$delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Compress)
 
 $delegatedFormCategoryGuids = @()
 foreach($category in $delegatedFormCategories) {
@@ -636,7 +644,7 @@ foreach($category in $delegatedFormCategories) {
         $body = @{
             name = @{"en" = $category};
         }
-        $body = ConvertTo-Json -InputObject $body
+        $body = ConvertTo-Json -InputObject $body -Depth 100
 
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories")
         $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
@@ -646,7 +654,7 @@ foreach($category in $delegatedFormCategories) {
         Write-Information "HelloID Delegated Form category '$category' successfully created$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     }
 }
-$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Compress)
+$delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Depth 100 -Compress)
 <# End: Delegated Form Access Groups and Categories #>
 
 <# Begin: Delegated Form #>
@@ -654,129 +662,10 @@ $delegatedFormRef = [PSCustomObject]@{guid = $null; created = $null}
 $delegatedFormName = @'
 Azure AD Group - Create
 '@
-Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-users" -returnObject ([Ref]$delegatedFormRef) 
-<# End: Delegated Form #>
-
-<# Begin: Delegated Form Task #>
-if($delegatedFormRef.created -eq $true) { 
-	$tmpScript = @'
-# Fixed values
-$visibility = "Public"
-
-# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
-
-try{   
-    Hid-Write-Status -Message "Generating Microsoft Graph API Access Token.." -Event Information
-
-    $baseUri = "https://login.microsoftonline.com/"
-    $authUri = $baseUri + "$AADTenantID/oauth2/token"
-
-    $body = @{
-        grant_type      = "client_credentials"
-        client_id       = "$AADAppId"
-        client_secret   = "$AADAppSecret"
-        resource        = "https://graph.microsoft.com"
-    }
- 
-    $Response = Invoke-RestMethod -Method POST -Uri $authUri -Body $body -ContentType 'application/x-www-form-urlencoded'
-    $accessToken = $Response.access_token;
-
-    Hid-Write-Status -Message "Creating AzureAD group [$($Name)].." -Event Information
- 
-    #Add the authorization header to the request
-    $authorization = @{
-        Authorization = "Bearer $accesstoken";
-        'Content-Type' = "application/json";
-        Accept = "application/json";
-    }
- 
-    $baseCreateUri = "https://graph.microsoft.com/"
-    $createUri = $baseCreateUri + "v1.0/groups"
-
-
-    Switch($GroupType){
-        'Microsoft 365 group' {
-            $group = [PSCustomObject]@{
-                description = $Description;
-                displayName = $DisplayName;
-
-                groupTypes = @("Unified");
-
-                mailEnabled = $true;
-                mailNickname = $MailNickname;
-                # allowExternalSenders = $allowExternalSenders; - Not supported with Application permissions
-                # autoSubscribeNewMembers = $autoSubscribeNewMembers; - Not supported with Application permissions
-
-                securityEnabled = $false;
-
-                visibility = $visibility;
-            }
-        }
-
-        'Security group' {
-            $group = [PSCustomObject]@{
-                description = $Description;
-                displayName = $DisplayName;
-
-                #groupTypes = @(""); - Needs to be empty to create Security group
-
-                mailEnabled = $false;
-                mailNickname = $MailNickname;
-                # allowExternalSenders = $allowExternalSenders; - Not supported with Application permissions
-                # autoSubscribeNewMembers = $autoSubscribeNewMembers; - Not supported with Application permissions
-
-                securityEnabled = $true;
-
-                visibility = $visibility;
-            }
-        }
-    }
-
-    if(![string]::IsNullOrEmpty($owners)){
-        Hid-Write-Status -Message "Adding Owners: $owners" -Event Warning
-        $ownersToAdd = ($owners | ConvertFrom-Json)
-    
-        $ownersBody =  @(foreach($user in $ownersToAdd){
-            "https://graph.microsoft.com/v1.0/users/$($user.id)"
-        })
-        $group | Add-Member -MemberType NoteProperty -Name "owners@odata.bind" -Value $ownersBody -Force
-    }
-    
-    if(![string]::IsNullOrEmpty($members)){
-        Hid-Write-Status -Message "Adding Members: $members" -Event Warning
-        $membersToAdd = ($members | ConvertFrom-Json)
-    
-        $membersBody =  @(foreach($user in $membersToAdd){
-            "https://graph.microsoft.com/v1.0/users/$($user.id)"
-        })
-        $group | Add-Member -MemberType NoteProperty -Name "members@odata.bind" -Value $membersBody -Force
-    }
-    
-
-    $body = $group | ConvertTo-Json -Depth 10
- 
-    $response = Invoke-RestMethod -Uri $createUri -Method POST -Headers $authorization -Body $body -Verbose:$false
-
-    Hid-Write-Status -Message "AzureAD group [$($DisplayName)] created successfully" -Event Success
-    HID-Write-Summary -Message "AzureAD group [$($DisplayName)] created successfully" -Event Success
-} catch {
-    if($_.ErrorDetails.Message) { $errorDetailsMessage = ($_.ErrorDetails.Message | ConvertFrom-Json).error.message } 
-    HID-Write-Status -Message -Event Error ("Error creating AzureAD group [$($DisplayName)]. Error: $_" + $errorDetailsMessage)
-    HID-Write-Summary -Message -Event Failed "Error creating AzureAD group [$($DisplayName)]"
-}
-'@; 
-
-	$tmpVariables = @'
-[{"name":"Description","value":"{{form.description}}","secret":false,"typeConstraint":"string"},{"name":"DisplayName","value":"{{form.displayName}}","secret":false,"typeConstraint":"string"},{"name":"GroupType","value":"{{form.groupType}}","secret":false,"typeConstraint":"string"},{"name":"MailNickname","value":"{{form.mailNickname}}","secret":false,"typeConstraint":"string"},{"name":"Members","value":"{{form.multiselectMembers.toJsonString}}","secret":false,"typeConstraint":"string"},{"name":"Owners","value":"{{form.multiselectOwners.toJsonString}}","secret":false,"typeConstraint":"string"}]
+$tmpTask = @'
+{"name":"Azure AD Group - Create","script":"# Set TLS to accept TLS, TLS 1.1 and TLS 1.2\r\n[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12\r\n\r\n$VerbosePreference = \"SilentlyContinue\"\r\n$InformationPreference = \"Continue\"\r\n$WarningPreference = \"Continue\"\r\n\r\n# Fixed values\r\n$visibility = \"Public\"\r\n\r\n# variables configured in form\r\n$Description = $form.description\r\n$DisplayName = $form.displayName\r\n$MailNickname = $form.mailNickname\r\n$GroupType = $form.groupType\r\n$members = $form.multiselectmembers\r\n$owners = $form.multiselectowners\r\n\r\ntry {   \r\n    Write-Information \"Generating Microsoft Graph API Access Token..\"\r\n\r\n    $baseUri = \"https://login.microsoftonline.com/\"\r\n    $authUri = $baseUri + \"$AADTenantID/oauth2/token\"\r\n\r\n    $body = @{\r\n        grant_type    = \"client_credentials\"\r\n        client_id     = \"$AADAppId\"\r\n        client_secret = \"$AADAppSecret\"\r\n        resource      = \"https://graph.microsoft.com\"\r\n    }\r\n \r\n    $Response = Invoke-RestMethod -Method POST -Uri $authUri -Body $body -ContentType \u0027application/x-www-form-urlencoded\u0027\r\n    $accessToken = $Response.access_token;\r\n\r\n    Write-Information \"Creating AzureAD group [$($DisplayName)]..\"\r\n \r\n    #Add the authorization header to the request\r\n    $authorization = @{\r\n        Authorization  = \"Bearer $accesstoken\";\r\n        \u0027Content-Type\u0027 = \"application/json\";\r\n        Accept         = \"application/json\";\r\n    }\r\n \r\n    $baseCreateUri = \"https://graph.microsoft.com/\"\r\n    $createUri = $baseCreateUri + \"v1.0/groups\"\r\n\r\n\r\n    Switch ($GroupType) {\r\n        \u0027Microsoft 365 group\u0027 {\r\n            $group = [PSCustomObject]@{\r\n                description     = $Description;\r\n                displayName     = $DisplayName;\r\n\r\n                groupTypes      = @(\"Unified\");\r\n\r\n                mailEnabled     = $true;\r\n                mailNickname    = $MailNickname;\r\n                # allowExternalSenders = $allowExternalSenders; - Not supported with Application permissions\r\n                # autoSubscribeNewMembers = $autoSubscribeNewMembers; - Not supported with Application permissions\r\n\r\n                securityEnabled = $false;\r\n\r\n                visibility      = $visibility;\r\n            }\r\n        }\r\n\r\n        \u0027Security group\u0027 {\r\n            $group = [PSCustomObject]@{\r\n                description     = $Description;\r\n                displayName     = $DisplayName;\r\n\r\n                #groupTypes = @(\"\"); - Needs to be empty to create Security group\r\n\r\n                mailEnabled     = $false;\r\n                mailNickname    = $MailNickname;\r\n                # allowExternalSenders = $allowExternalSenders; - Not supported with Application permissions\r\n                # autoSubscribeNewMembers = $autoSubscribeNewMembers; - Not supported with Application permissions\r\n\r\n                securityEnabled = $true;\r\n\r\n                visibility      = $visibility;\r\n            }\r\n        }\r\n    }\r\n    \r\n    if ($owners) {\r\n        Write-Warning \"Adding Owners: $($owners.displayName) [$($owners.UserPrincipalName)]\"\r\n        #$ownersToAdd = ($owners | ConvertFrom-Json)\r\n    \r\n        $ownersBody = @(foreach ($user in $owners) {\r\n                \"https://graph.microsoft.com/v1.0/users/$($user.id)\"\r\n            })\r\n        $group | Add-Member -MemberType NoteProperty -Name \"owners@odata.bind\" -Value $ownersBody -Force\r\n    }\r\n    \r\n    if ($members) {\r\n        Write-Warning \"Adding Members: $($members.displayName) [$($members.UserPrincipalName)]\"\r\n        #$membersToAdd = ($members | ConvertFrom-Json)\r\n    \r\n        $membersBody = @(foreach ($user in $members) {\r\n                \"https://graph.microsoft.com/v1.0/users/$($user.id)\"\r\n            })\r\n        $group | Add-Member -MemberType NoteProperty -Name \"members@odata.bind\" -Value $membersBody -Force\r\n    }\r\n    \r\n\r\n    $body = $group | ConvertTo-Json -Depth 10\r\n \r\n    #Write-Information $body\r\n    $response = Invoke-RestMethod -Uri $createUri -Method POST -Headers $authorization -Body $body -Verbose:$false\r\n    \r\n    Write-Information \"AzureAD group [$($DisplayName)] created successfully\"\r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"AzureActiveDirectory\" # optional (free format text) \r\n        Message           = \"AzureAD group [$($DisplayName)] created successfully\" # required (free format text) \r\n        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $DisplayName # optional (free format text) \r\n        TargetIdentifier  = $([string]$response.id) # optional (free format text) \r\n    }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log\r\n    \r\n}\r\ncatch {\r\n    if ($_.ErrorDetails.Message) { $errorDetailsMessage = ($_.ErrorDetails.Message | ConvertFrom-Json).error.message } \r\n    Write-Error \"Error creating AzureAD group [$($DisplayName)]. Error: $_ $errorDetailsMessage\"\r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"AzureActiveDirectory\" # optional (free format text) \r\n        Message           = \"Failed to create AzureAD group [$($DisplayName)].\" # required (free format text) \r\n        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $DisplayName # optional (free format text) \r\n        TargetIdentifier  = $([string]$response.id) # optional (free format text) \r\n    }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log\r\n}","runInCloud":false}
 '@ 
 
-	$delegatedFormTaskGuid = [PSCustomObject]@{} 
-$delegatedFormTaskName = @'
-Azure-AD-Group-Create
-'@
-	Invoke-HelloIDAutomationTask -TaskName $delegatedFormTaskName -UseTemplate "False" -AutomationContainer "8" -Variables $tmpVariables -PowershellScript $tmpScript -ObjectGuid $delegatedFormRef.guid -ForceCreateTask $true -returnObject ([Ref]$delegatedFormTaskGuid) 
-} else {
-	Write-Warning "Delegated form '$delegatedFormName' already exists. Nothing to do with the Delegated Form task..." 
-}
-<# End: Delegated Form Task #>
+Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-users" -task $tmpTask -returnObject ([Ref]$delegatedFormRef) 
+<# End: Delegated Form #>
+
