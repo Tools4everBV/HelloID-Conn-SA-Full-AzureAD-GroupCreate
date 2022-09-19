@@ -1,5 +1,5 @@
 # AzureAD Application Parameters #
-$Mailsuffix = "devbreekie18.onmicrosoft.com"
+$Mailsuffix = $AzureMailSuffix
 $Name = "M365-" + $datasource.Name
 $Description = "Microsoft 365 group for $($datasource.Name)"
 
